@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from '../contexts/authContext'
-import { Container, Alert } from 'react-bootstrap'
+import { Container, Alert, Row, Col, Button, Spinner } from 'react-bootstrap'
 import { storage, database } from '../firebase'
 import { query, where, onSnapshot, orderBy, doc, deleteDoc } from "firebase/firestore"
 import { ref, deleteObject } from "firebase/storage"
 import AddFileButton from './addFileButton'
 import FilesTable from './filesTable'
-import FileManagerNavbar from './navbar'
-import FileControls from './fileControls'
+import FileManagerNavbar from '../components/navbar'
+import FileControls from '../components/fileControls'
+import PngPreview from './pngPreview'
+import XmlPreview from './xmlPreview'
+import SyncManager from './syncManager'
 
 
 export default function Dashboard() {
@@ -18,7 +21,9 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true)
     const navigate = useNavigate()
 
-    const [sortOrder, setSortOrder] = useState('desc'); 
+    const [sortOrder, setSortOrder] = useState('desc');
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [isPreviewLoading, setIsPreviewLoading] = useState(false);
     const [filterExtension, setFilterExtension] = useState('all'); 
 
     const handleDelete = async (file) => {
@@ -62,6 +67,25 @@ export default function Dashboard() {
         window.URL.revokeObjectURL(blobUrl);
     };
 
+    const handleFileSelect = (file) => {
+        setSelectedFile(file);
+        
+        if (file) {
+        setIsPreviewLoading(true);
+        } else {
+        setIsPreviewLoading(false);
+        }
+    };
+
+    const handleClosePreview = () => {
+        setSelectedFile(null);
+        setIsPreviewLoading(false);
+    };
+
+    const handlePreviewLoaded = () => {
+        setIsPreviewLoading(false);
+    };
+
     async function handleLogout()
     {
         setError('')
@@ -103,31 +127,91 @@ export default function Dashboard() {
 
   return (
       <>
-          <FileManagerNavbar
-              userEmail={currentUser.email}
-              handleLogout={handleLogout}
-          />
-          <Container className="mt-5">
-              <h2 className="text-center mb-4">Virtual disk</h2>
-              {error && <Alert variant="danger">{error}</Alert>}
-          </Container>
-          <Container fluid className="px-5">
-                <div className="d-flex align-items-center mb-4">
-                    <AddFileButton />
+        <FileManagerNavbar
+            userEmail={currentUser.email}
+            handleLogout={handleLogout}
+        />
+        <Container className="mt-5">
+            <h2 className="text-center mb-4">Virtual disk</h2>
+            {error && <Alert variant="danger">{error}</Alert>}
+        </Container>
+        <Container fluid className="px-5">
+        <Row>
+            <Col md={8}>
+            <SyncManager />
+            <div className="d-flex align-items-center mb-4">
+                <AddFileButton />
+            </div>
+            <FileControls 
+                sortOrder={sortOrder}
+                setSortOrder={setSortOrder}
+                filterExtension={filterExtension}
+                setFilterExtension={setFilterExtension}
+            />
+            <FilesTable 
+                files={files} 
+                loading={loading}
+                handleDownload={handleDownload}
+                handleDelete={handleDelete}  
+                onFileSelect={handleFileSelect}
+            />
+            </Col>
+
+            <Col md={4}>
+                <h3 className="text-center mb-4">File preview</h3>
+                {isPreviewLoading && (
+                    <div className="text-center my-3">
+                    <Spinner animation="border" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                    </Spinner>
+                    </div>
+                )}
+                <div style={{ display: isPreviewLoading ? 'none' : 'block' }}>
+                {selectedFile?.extension=="png" &&
+                    (
+                    <div>
+                        <PngPreview 
+                            file={selectedFile}
+                            onPreviewLoaded={handlePreviewLoaded}
+                            onPreviewError={handlePreviewLoaded} 
+                        />
+                        <div class="text-center mt-3">
+                        <Button 
+                            variant="outline-secondary" 
+                            size="sm"
+                            onClick={handleClosePreview}
+                        >
+                            Close
+                        </Button>
+                        </div>
+                    </div>
+                    )
+                }
+                {selectedFile?.extension=="xml" &&
+                    (
+                    <div>
+                        <XmlPreview 
+                            file={selectedFile}
+                            onPreviewLoaded={handlePreviewLoaded}
+                            onPreviewError={handlePreviewLoaded} 
+                        />
+                        <div class="text-center mt-3">
+                        <Button 
+                            variant="outline-secondary" 
+                            size="sm"
+                            onClick={handleClosePreview}
+                        >
+                            Close
+                        </Button>
+                        </div>
+                    </div>
+                    )
+                }
                 </div>
-                <FileControls 
-                    sortOrder={sortOrder}
-                    setSortOrder={setSortOrder}
-                    filterExtension={filterExtension}
-                    setFilterExtension={setFilterExtension}
-                />
-                <FilesTable 
-                    files={files} 
-                    loading={loading}
-                    handleDownload={handleDownload}
-                    handleDelete={handleDelete}  
-                />
-            </Container>
+                
+            </Col>
+        </Row>
+        </Container>
       </>
   )
 }

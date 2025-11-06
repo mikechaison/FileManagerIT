@@ -1,5 +1,5 @@
-import React from 'react';
-import { Table, Spinner, Button } from 'react-bootstrap';
+import React, { useState } from 'react';
+import { Table, Spinner, Button, Form } from 'react-bootstrap';
 import File from './file'
 
 const supportedExtensions = ["xml", "png"]
@@ -11,7 +11,13 @@ const formatTimestamp = (timestamp) => {
     return timestamp.toDate().toLocaleString();
 };
 
-const FilesTable = ({ files, loading, handleDownload, handleDelete }) => {
+const FilesTable = ({ files, loading, handleDownload, handleDelete, onFileSelect }) => {
+
+    const [showUploadedAt, setShowUploadedAt] = useState(true);
+    const [showUploadedBy, setShowUploadedBy] = useState(true);
+    const [showModifiedAt, setShowModifiedAt] = useState(true);
+    const [showModifiedBy, setShowModifiedBy] = useState(true);
+
     if (loading) {
         return (
             <div className="text-center">
@@ -26,14 +32,42 @@ const FilesTable = ({ files, loading, handleDownload, handleDelete }) => {
     }
 
     return (
+        <>
+        <Form className="d-flex gap-3 mb-2">
+            <Form.Check 
+                type="checkbox"
+                label="UploadedAt"
+                checked={showUploadedAt}
+                onChange={(e) => setShowUploadedAt(e.target.checked)}
+            />
+            <Form.Check 
+                type="checkbox"
+                label="UploadedBy"
+                checked={showUploadedBy}
+                onChange={(e) => setShowUploadedBy(e.target.checked)}
+            />
+            <Form.Check 
+                type="checkbox"
+                label="ModifiedAt"
+                checked={showModifiedAt}
+                onChange={(e) => setShowModifiedAt(e.target.checked)}
+            />
+            <Form.Check 
+                type="checkbox"
+                label="ModifiedBy"
+                checked={showModifiedBy}
+                onChange={(e) => setShowModifiedBy(e.target.checked)}
+            />
+        </Form>
+
         <Table striped bordered hover responsive>
             <thead>
                 <tr className="text-center align-middle">
                     <th>Name</th>
-                    <th>Uploaded At</th>
-                    <th>Uploaded By</th>
-                    <th>Modified At</th>
-                    <th>Modified By</th>
+                    {showUploadedAt && (<th>Uploaded At</th>)}
+                    {showUploadedBy && (<th>Uploaded By</th>)}
+                    {showModifiedAt && (<th>Modified At</th>)}
+                    {showModifiedBy && (<th>Modified By</th>)}
                     <th>Download</th>
                     <th>Delete</th>
                 </tr>
@@ -43,13 +77,13 @@ const FilesTable = ({ files, loading, handleDownload, handleDelete }) => {
                     <tr key={file.id}>
                         <td>
                             {supportedExtensions.includes(file.extension)
-                            ? <File file={file} />
+                            ? <File file={file} onSelect={onFileSelect}/>
                             : file.name }
                         </td>
-                        <td>{formatTimestamp(file.uploadedAt)}</td>
-                        <td>{file.uploadedBy}</td>
-                        <td>{formatTimestamp(file.modifiedAt)}</td>
-                        <td>{file.modifiedBy}</td>
+                        {showUploadedAt && (<td>{formatTimestamp(file.uploadedAt)}</td>)}
+                        {showUploadedBy && (<td>{file.uploadedBy}</td>)}
+                        {showModifiedAt && (<td>{formatTimestamp(file.modifiedAt)}</td>)}
+                        {showModifiedBy && (<td>{file.modifiedBy}</td>)}
                         <td className="text-center align-middle">
                             <Button 
                                 variant="outline-primary"
@@ -71,6 +105,7 @@ const FilesTable = ({ files, loading, handleDownload, handleDelete }) => {
                 ))}
             </tbody>
         </Table>
+        </>
     );
 };
 

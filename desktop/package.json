@@ -6,11 +6,15 @@
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.4",
     "bootstrap": "^5.3.8",
+    "chokidar": "^4.0.3",
+    "electron-store": "^11.0.2",
     "firebase": "^12.3.0",
+    "prism-react-renderer": "^2.4.1",
     "react": "^19.2.0",
     "react-bootstrap": "^2.10.10",
     "react-bootstrap-icons": "^1.11.6",
     "react-dom": "^19.2.0",
+    "react-dropzone": "^14.3.8",
     "react-router-dom": "^7.9.4",
     "vite": "^7.1.9"
   },
