@@ -3,12 +3,12 @@ import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from '../contexts/authContext'
 import { Container, Alert, Row, Col, Button, Spinner } from 'react-bootstrap'
 import { storage, database } from '../firebase'
-import { query, where, onSnapshot, orderBy, doc, deleteDoc } from "firebase/firestore"
+import { query, where, onSnapshot, orderBy, doc, deleteDoc, getDocs } from "firebase/firestore"
 import { ref, deleteObject } from "firebase/storage"
 import AddFileButton from './addFileButton'
 import FilesTable from './filesTable'
 import FileManagerNavbar from '../components/navbar'
-import FileControls from '../components/fileControls'
+import FileControls from './fileControls'
 import PngPreview from './pngPreview'
 import XmlPreview from './xmlPreview'
 import SyncManager from './syncManager'
@@ -66,6 +66,122 @@ export default function Dashboard() {
 
         window.URL.revokeObjectURL(blobUrl);
     };
+
+    const handleDownloadAll = async () => {
+        if (!currentUser) return;
+
+        try {
+            const q = query(database.files, where("userId", "==", currentUser.uid));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                alert("No files to download!");
+                return;
+            }
+
+            const filesToDownload = [];
+            
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                filesToDownload.push({
+                    url: data.url,
+                    name: data.name
+                });
+            });
+
+            if (window.electronAPI && window.electronAPI.downloadMultipleFiles) {
+                window.electronAPI.downloadMultipleFiles(filesToDownload);
+            }
+
+        } catch (error) {
+            alert(error.message);
+        }
+    };
+
+    const handleDeleteAll = async () => {
+        if (!currentUser) return;
+        
+        const confirmDelete = window.confirm("Are you sure to delete ALL files?");
+        if (!confirmDelete) return;
+
+        try {
+            const q = query(database.files, where("userId", "==", currentUser.uid));
+            const querySnapshot = await getDocs(q);
+
+            const deletePromises = querySnapshot.docs.map(async (document) => {
+                const fileData = document.data();
+                const fileRef = ref(storage, `files/${currentUser.uid}/${fileData.name.replace(/ /g, "_")}`);
+                
+                try {
+                    await deleteObject(fileRef);
+                } catch (err) {}
+                await deleteDoc(document.ref);
+            });
+
+            await Promise.all(deletePromises);
+
+        } catch (error) {
+        }
+    };
+
+    useEffect(() => {
+        let unsubDownloadAll, unsubDeleteAll, unsubSortAsc, unsubSortDesc;
+        let unsubViewAll, unsubViewXml, unsubViewPng;
+
+        if (window.electronAPI) {
+            if (window.electronAPI.onTriggerDownloadAll) {
+                unsubDownloadAll = window.electronAPI.onTriggerDownloadAll(() => {
+                    handleDownloadAll();
+                });
+            }
+
+            if (window.electronAPI.onTriggerDeleteAll) {
+                unsubDeleteAll = window.electronAPI.onTriggerDeleteAll(() => {
+                    handleDeleteAll();
+                });
+            }
+
+            if (window.electronAPI.onTriggerSortAsc) {
+                unsubSortAsc = window.electronAPI.onTriggerSortAsc(() => {
+                    setSortOrder('asc');
+                });
+            }
+
+            if (window.electronAPI.onTriggerSortDesc) {
+                unsubSortDesc = window.electronAPI.onTriggerSortDesc(() => {
+                    setSortOrder('desc');
+                });
+            }
+
+            if (window.electronAPI.onTriggerViewAll) {
+                unsubSortAsc = window.electronAPI.onTriggerViewAll(() => {
+                    setFilterExtension('all');
+                });
+            }
+
+            if (window.electronAPI.onTriggerViewXml) {
+                unsubSortAsc = window.electronAPI.onTriggerViewXml(() => {
+                    setFilterExtension('xml');
+                });
+            }
+
+            if (window.electronAPI.onTriggerViewPng) {
+                unsubSortAsc = window.electronAPI.onTriggerViewPng(() => {
+                    setFilterExtension('png');
+                });
+            }
+        }
+
+        return () => {
+            if (unsubDownloadAll) unsubDownloadAll();
+            if (unsubDeleteAll) unsubDeleteAll();
+            if (unsubSortAsc) unsubSortAsc();
+            if (unsubSortDesc) unsubSortDesc();
+            if (unsubViewAll) unsubViewAll();
+            if (unsubViewXml) unsubViewXml();
+            if (unsubViewPng) unsubViewPng();
+        };
+    }, [currentUser]);
 
     const handleFileSelect = (file) => {
         setSelectedFile(file);

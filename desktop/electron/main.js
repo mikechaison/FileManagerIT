@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, MenuItem } = require('electron');
 const path = require('path');
 const chokidar = require('chokidar');
 const fs = require('fs');
@@ -21,6 +21,66 @@ function createWindow() {
     },
   });
   mainWindow.loadURL('http://localhost:5173');
+
+// App menu
+    const template = [
+        {
+            label: 'File',
+            submenu: [
+                {
+                    label: 'Upload',
+                    click: () => mainWindow.webContents.send('trigger-upload-dialog')
+                },
+                {
+                    label: 'Download all',
+                    click: () => mainWindow.webContents.send('trigger-download-all')
+                },
+                {
+                    label: 'Delete all',
+                    click: () => mainWindow.webContents.send('trigger-delete-all')
+                },
+            ]
+        },
+        {
+            label: 'View',
+            submenu: [
+                {
+                    label: 'Descending',
+                    click: () => mainWindow.webContents.send('trigger-sort-desc')
+                },
+                {
+                    label: 'Ascending',
+                    click: () => mainWindow.webContents.send('trigger-sort-asc')
+                },
+                { type: 'separator' },
+                {
+                    label: 'View all',
+                    click: () => mainWindow.webContents.send('trigger-view-all')
+                },
+                {
+                    label: 'View XML',
+                    click: () => mainWindow.webContents.send('trigger-view-xml')
+                },
+                {
+                    label: 'View PNG',
+                    click: () => mainWindow.webContents.send('trigger-view-png')
+                },
+                { type: 'separator' },
+                { role: 'reload' },
+                { role: 'toggleDevTools' }
+            ]
+        },
+        {
+            label: 'Window',
+            submenu: [
+                {role: 'minimize'},
+                {role: 'close'}
+            ]
+        }
+    ]
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
 }
 
 app.whenReady().then(async () => {
@@ -56,7 +116,7 @@ app.whenReady().then(async () => {
       persistent: true,
       ignoreInitial: false,
       awaitWriteFinish: {
-        stabilityThreshold: 1500,
+        stabilityThreshold: 8000,
         pollInterval: 100
       }
     });
@@ -197,6 +257,98 @@ app.whenReady().then(async () => {
         downloadQueue.delete(fileName); 
       }
     });
+
+    ipcMain.on('download-multiple-files', async (event, files) => {
+        const downloadOneFile = (url, destPath) => {
+            return new Promise((resolve, reject) => {
+                const file = fs.createWriteStream(destPath);
+                https.get(url, (response) => {
+                    if (response.statusCode !== 200) {
+                        fs.unlink(destPath, () => {});
+                        reject(`Status code: ${response.statusCode}`);
+                        return;
+                    }
+                    response.pipe(file);
+                    file.on('finish', () => {
+                        file.close();
+                        resolve();
+                    });
+                }).on('error', (err) => {
+                    fs.unlink(destPath, () => {});
+                    reject(err.message);
+                });
+            });
+        };
+
+        const win = BrowserWindow.getFocusedWindow();
+
+        const { filePaths, canceled } = await dialog.showOpenDialog(win, {
+            title: 'Choose a folder to download',
+            properties: ['openDirectory', 'createDirectory']
+        });
+
+        if (canceled || filePaths.length === 0) {
+            return;
+        }
+
+        const targetFolder = filePaths[0];
+
+        const downloadPromises = files.map(file => {
+            const safeName = file.name || `file_${Date.now()}.unknown`;
+            const destPath = path.join(targetFolder, safeName);
+            
+            return downloadOneFile(file.url, destPath);
+        });
+
+        await Promise.all(downloadPromises);
+    });
   
-  createWindow();
+    createWindow();
+
+  // Context menu
+  const ctxMenu = new Menu();
+    ctxMenu.append(new MenuItem({
+        label: 'Upload',
+        click: () => mainWindow.webContents.send('trigger-upload-dialog')
+    }));
+    ctxMenu.append(new MenuItem({
+        label: 'Download all',
+        click: () => mainWindow.webContents.send('trigger-download-all')
+    }));
+    ctxMenu.append(new MenuItem({
+        label: 'Delete all',
+        click: () => mainWindow.webContents.send('trigger-delete-all')
+    }));
+    ctxMenu.append(new MenuItem({type: 'separator'}));
+    ctxMenu.append(new MenuItem({
+        label: 'Descending',
+        click: () => mainWindow.webContents.send('trigger-sort-desc')
+    }));
+    ctxMenu.append(new MenuItem({
+        label: 'Ascending',
+        click: () => mainWindow.webContents.send('trigger-sort-asc')
+    }));
+    ctxMenu.append(new MenuItem({type: 'separator'}));
+    ctxMenu.append(new MenuItem({
+        label: 'View all',
+        click: () => mainWindow.webContents.send('trigger-view-all')
+    }));
+    ctxMenu.append(new MenuItem({
+        label: 'View XML',
+        click: () => mainWindow.webContents.send('trigger-view-xml')
+    }));
+    ctxMenu.append(new MenuItem({
+        label: 'View PNG',
+        click: () => mainWindow.webContents.send('trigger-view-png')
+    }));
+    ctxMenu.append(new MenuItem({type: 'separator'}));
+    ctxMenu.append(new MenuItem({role: 'reload'}));
+    ctxMenu.append(new MenuItem({role: 'toggleDevTools'}));
+    ctxMenu.append(new MenuItem({type: 'separator'}));
+    ctxMenu.append(new MenuItem({role: 'minimize'}));
+    ctxMenu.append(new MenuItem({role: 'close'}));
+
+  mainWindow.webContents.on('context-menu', function(e, params){
+    ctxMenu.popup(mainWindow, params.x, params.y);
+  });
 });

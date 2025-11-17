@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Modal, Button } from 'react-bootstrap';
 import { useDropzone } from 'react-dropzone';
 import { useAuth } from '../contexts/authContext';
@@ -12,6 +12,23 @@ export default function AddFileButton() {
 
     const handleClose = () => setShow(false);
     const handleShow = () => setShow(true);
+
+    useEffect(() => {
+    
+        let unsubscribe;
+
+        if (window.electronAPI && window.electronAPI.onTriggerUpload) {
+            unsubscribe = window.electronAPI.onTriggerUpload(() => {
+                handleShow();
+            });
+        }
+
+        return () => {
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        };
+    }, []);
 
     const uploadFile = async (file) => {
         if (file == null || !currentUser) return;

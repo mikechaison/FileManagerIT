@@ -21,7 +21,7 @@ const FilesTable = ({ files, loading, handleDownload, handleDelete, onFileSelect
     if (loading) {
         return (
             <div className="text-center">
-                <Spinner animation="border" />
+                <Spinner animation="border" role="status"/>
                 <p>Loading files...</p>
             </div>
         );
@@ -36,24 +36,28 @@ const FilesTable = ({ files, loading, handleDownload, handleDelete, onFileSelect
         <Form className="d-flex gap-3 mb-2">
             <Form.Check 
                 type="checkbox"
+                id="chk-uploaded-at"
                 label="UploadedAt"
                 checked={showUploadedAt}
                 onChange={(e) => setShowUploadedAt(e.target.checked)}
             />
             <Form.Check 
                 type="checkbox"
+                id="chk-uploaded-by"
                 label="UploadedBy"
                 checked={showUploadedBy}
                 onChange={(e) => setShowUploadedBy(e.target.checked)}
             />
             <Form.Check 
                 type="checkbox"
+                id="chk-modified-at"
                 label="ModifiedAt"
                 checked={showModifiedAt}
                 onChange={(e) => setShowModifiedAt(e.target.checked)}
             />
             <Form.Check 
                 type="checkbox"
+                id="chk-modified-by"
                 label="ModifiedBy"
                 checked={showModifiedBy}
                 onChange={(e) => setShowModifiedBy(e.target.checked)}
