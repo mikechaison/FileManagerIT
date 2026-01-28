@@ -21,8 +21,5 @@
   "devDependencies": {
     "gh-pages": "^6.3.0"
   },
-  "homepage": "https://mikechaison.github.io/FileManagerIT",
-  "scripts": {
-    "deploy": "gh-pages -d dist"
-  }
+  "homepage": "https://mikechaison.github.io/FileManagerIT"
 }
