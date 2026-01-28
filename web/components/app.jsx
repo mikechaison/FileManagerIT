@@ -9,7 +9,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom"
 function App()
 {
     return (
-        <BrowserRouter>
+        <BrowserRouter basename="/FileManagerIT">
             <AuthProvider>
                 <Routes>
                     <Route element={<PrivateRoute />}>
